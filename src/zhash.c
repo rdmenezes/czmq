@@ -102,9 +102,10 @@ s_item_hash (char *key, size_t limit)
 static item_t *
 s_item_lookup (zhash_t *self, char *key)
 {
+	item_t *item;
     //  Look in bucket list for item by key
     self->cached_index = s_item_hash (key, self->limit);
-    item_t *item = self->items [self->cached_index];
+    item = self->items [self->cached_index];
     while (item) {
         if (streq (item->key, key))
             break;
@@ -130,7 +131,7 @@ s_item_insert (zhash_t *self, char *key, void *value)
         if (!item)
             return NULL;
         item->value = value;
-        item->key = strdup (key);
+        item->key = _strdup (key);
         item->index = self->cached_index;
         //  Insert into start of bucket list
         item->next = self->items [self->cached_index];
@@ -277,10 +278,12 @@ zhash_insert (zhash_t *self, char *key, void *value)
 void
 zhash_update (zhash_t *self, char *key, void *value)
 {
+	item_t *item;
+
     assert (self);
     assert (key);
     
-    item_t *item = s_item_lookup (self, key);
+    item = s_item_lookup (self, key);
     if (item) {
         if (item->free_fn)
             (item->free_fn) (item->value);
@@ -298,10 +301,12 @@ zhash_update (zhash_t *self, char *key, void *value)
 void
 zhash_delete (zhash_t *self, char *key)
 {
+	item_t *item;
+
     assert (self);
     assert (key);
 
-    item_t *item = s_item_lookup (self, key);
+    item = s_item_lookup (self, key);
     if (item)
         s_item_destroy (self, item, TRUE);
 }
@@ -313,10 +318,12 @@ zhash_delete (zhash_t *self, char *key)
 void *
 zhash_lookup (zhash_t *self, char *key)
 {
+	item_t *item;
+
     assert (self);
     assert (key);
 
-    item_t *item = s_item_lookup (self, key);
+    item = s_item_lookup (self, key);
     if (item)
         return item->value;
     else
@@ -331,13 +338,16 @@ zhash_lookup (zhash_t *self, char *key)
 int
 zhash_rename (zhash_t *self, char *old_key, char *new_key)
 {
-    item_t *item = s_item_lookup (self, old_key);
+	item_t *item;
+	item_t *new_item;
+
+    item = s_item_lookup (self, old_key);
     if (item) {
         s_item_destroy (self, item, FALSE);
-        item_t *new_item = s_item_lookup (self, new_key);
+        new_item = s_item_lookup (self, new_key);
         if (new_item == NULL) {
             free (item->key);
-            item->key = strdup (new_key);
+            item->key = _strdup (new_key);
             item->index = self->cached_index;
             item->next = self->items [self->cached_index];
             self->items [self->cached_index] = item;
@@ -362,10 +372,12 @@ zhash_rename (zhash_t *self, char *old_key, char *new_key)
 void *
 zhash_freefn (zhash_t *self, char *key, zhash_free_fn *free_fn)
 {
+	item_t *item;
+
     assert (self);
     assert (key);
 
-    item_t *item = s_item_lookup (self, key);
+    item = s_item_lookup (self, key);
     if (item) {
         item->free_fn = free_fn;
         return item->value;
@@ -394,14 +406,18 @@ zhash_size (zhash_t *self)
 int
 zhash_foreach (zhash_t *self, zhash_foreach_fn *callback, void *argument)
 {
-    assert (self);
-    int rc = 0;
     uint index;
+	item_t *item;
+	item_t *next;
+	int rc = 0;
+
+    assert (self);
+
     for (index = 0; index != self->limit; index++) {
-        item_t *item = self->items [index];
+        item = self->items [index];
         while (item) {
             //  Invoke callback, passing item properties and argument
-            item_t *next = item->next;
+            next = item->next;
             rc = callback (item->key, item->value, argument);
             if (rc)
                 break;          //  End if non-zero return code
@@ -419,15 +435,18 @@ zhash_foreach (zhash_t *self, zhash_foreach_fn *callback, void *argument)
 void
 zhash_test (int verbose)
 {
+	int rc, testmax, testnbr, iteration;
+	void *item;
+	zhash_t *hash;
+	zhash_testset testset[200];
     printf (" * zhash: ");
 
     //  @selftest
-    zhash_t *hash = zhash_new ();
+    hash = zhash_new ();
     assert (hash);
     assert (zhash_size (hash) == 0);
 
     //  Insert some items
-    int rc;
     rc = zhash_insert (hash, "DEADBEEF", (void *) 0xDEADBEEF);
     assert (rc == 0);
     rc = zhash_insert (hash, "ABADCAFE", (void *) 0xABADCAFE);
@@ -439,7 +458,6 @@ zhash_test (int verbose)
     assert (zhash_size (hash) == 4);
 
     //  Look for existing items
-    void *item;
     item = zhash_lookup (hash, "DEADBEEF");
     assert (item == (void *) 0xDEADBEEF);
     item = zhash_lookup (hash, "ABADCAFE");
@@ -472,12 +490,12 @@ zhash_test (int verbose)
     assert (zhash_size (hash) == 3);
 
     //  Check that the queue is robust against random usage
-    struct {
-        char name [100];
-        Bool exists;
-    } testset [200];
+    //struct {
+    //    char name [100];
+    //    Bool exists;
+    //} testset [200];
     memset (testset, 0, sizeof (testset));
-    int testmax = 200, testnbr, iteration;
+    testmax = 200, testnbr, iteration;
 
     srandom ((unsigned) time (NULL));
     for (iteration = 0; iteration < 25000; iteration++) {

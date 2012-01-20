@@ -228,12 +228,14 @@ zlist_remove (zlist_t *self, void *item)
 zlist_t *
 zlist_copy (zlist_t *self)
 {
+	struct node_t *node;
+	zlist_t *copy;
+
     if (!self)
         return NULL;
 
-    zlist_t *copy = zlist_new ();
+    copy = zlist_new ();
     if (copy) {
-        struct node_t *node;
         for (node = self->head; node; node = node->next) {
             if (!zlist_append (copy, node->item)) {
                 zlist_destroy(&copy);
@@ -261,18 +263,21 @@ zlist_size (zlist_t *self)
 void
 zlist_test (int verbose)
 {
+	char *item;
+    char *cheese = "boursin";
+    char *bread = "baguette";
+    char *wine = "bordeaux";
+	zlist_t *list;
+
     printf (" * zlist: ");
 
     //  @selftest
-    zlist_t *list = zlist_new ();
+    list = zlist_new ();
     assert (list);
     assert (zlist_size (list) == 0);
 
     //  Three items we'll use as test data
     //  List items are void *, not particularly strings
-    char *cheese = "boursin";
-    char *bread = "baguette";
-    char *wine = "bordeaux";
 
     zlist_append (list, cheese);
     assert (zlist_size (list) == 1);
@@ -312,7 +317,6 @@ zlist_test (int verbose)
     assert (zlist_size (list) == 3);
     assert (zlist_first (list) == bread);
 
-    char *item;
     item = (char *) zlist_pop (list);
     assert (item == bread);
     item = (char *) zlist_pop (list);

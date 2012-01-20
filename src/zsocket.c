@@ -78,19 +78,22 @@ zsocket_destroy (zctx_t *ctx, void *socket)
 int
 zsocket_bind (void *socket, const char *format, ...)
 {
+	int rc = 0;
+	int endpoint_size;
+	int port;
     //  Ephemeral port needs 4 additional characters
     char endpoint [256 + 4];
     va_list argptr;
+
     va_start (argptr, format);
-    int endpoint_size = vsnprintf (endpoint, 256, format, argptr);
+    endpoint_size = vsnprintf (endpoint, 256, format, argptr);
     va_end (argptr);
 
     //  Port must be at end of endpoint
-    int rc = 0;
+    
     if (endpoint [endpoint_size - 2] == ':'
     &&  endpoint [endpoint_size - 1] == '*') {
         rc = -1;            //  Unless successful
-        int port;
         for (port = ZSOCKET_DYNFROM; port < ZSOCKET_DYNTO; port++) {
             sprintf (endpoint + endpoint_size - 1, "%d", port);
             if (zmq_bind (socket, endpoint) == 0) {
@@ -153,33 +156,40 @@ zsocket_type_str (void *socket)
 int
 zsocket_test (Bool verbose)
 {
-    printf (" * zsocket: ");
-
-    //  @selftest
-    zctx_t *ctx = zctx_new ();
-    assert (ctx);
-
-    //  Create a detached thread, let it run
+	int rc;
+	char *message;
+	void *writer;
+	void *reader;
+	int port;
     char *interf = "*";
     char *domain = "localhost";
     int service = 5560;
+	zctx_t *ctx;
 
-    void *writer = zsocket_new (ctx, ZMQ_PUSH);
+    printf (" * zsocket: ");
+
+    //  @selftest
+    ctx = zctx_new ();
+    assert (ctx);
+
+    //  Create a detached thread, let it run
+
+    writer = zsocket_new (ctx, ZMQ_PUSH);
     assert (writer);
-    void *reader = zsocket_new (ctx, ZMQ_PULL);
+    reader = zsocket_new (ctx, ZMQ_PULL);
     assert (reader);
     assert (streq (zsocket_type_str (writer), "PUSH"));
     assert (streq (zsocket_type_str (reader), "PULL"));
-    int rc = zsocket_bind (writer, "tcp://%s:%d", interf, service);
+	rc = zsocket_bind (writer, "tcp://%s:%d", interf, service);
     assert (rc == service);
     zsocket_connect (reader, "tcp://%s:%d", domain, service);
     zstr_send (writer, "HELLO");
-    char *message = zstr_recv (reader);
+    message = zstr_recv (reader);
     assert (message);
     assert (streq (message, "HELLO"));
     free (message);
 
-    int port = zsocket_bind (writer, "tcp://%s:*", interf);
+    port = zsocket_bind (writer, "tcp://%s:*", interf);
     assert (port >= ZSOCKET_DYNFROM && port <= ZSOCKET_DYNTO);
 
     zsocket_destroy (ctx, writer);

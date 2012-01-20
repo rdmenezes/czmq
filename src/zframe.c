@@ -101,8 +101,11 @@ zframe_destroy (zframe_t **self_p)
 zframe_t *
 zframe_recv (void *socket)
 {
+	zframe_t *self;
+
     assert (socket);
-    zframe_t *self = zframe_new (NULL, 0);
+
+    self = zframe_new (NULL, 0);
     if (self) {
         if (zmq_recvmsg (socket, &self->zmsg, 0) < 0) {
             zframe_destroy (&self);
@@ -121,8 +124,11 @@ zframe_recv (void *socket)
 zframe_t *
 zframe_recv_nowait (void *socket)
 {
+	zframe_t *self;
+
     assert (socket);
-    zframe_t *self = zframe_new (NULL, 0);
+
+    self = zframe_new (NULL, 0);
     if (self) {
         if (zmq_recvmsg (socket, &self->zmsg, ZMQ_DONTWAIT) < 0) {
             zframe_destroy (&self);
@@ -294,21 +300,29 @@ zframe_eq (zframe_t *self, zframe_t *other)
 void
 zframe_print (zframe_t *self, char *prefix)
 {
+	int is_bin;
+	char *elipsis;
+	size_t size;
+	uint char_nbr;
+	size_t max_size;
+	byte *data;
+
     assert (self);
+
     if (prefix)
         fprintf (stderr, "%s", prefix);
-    byte *data = zframe_data (self);
-    size_t size = zframe_size (self);
+    data = zframe_data (self);
+    size = zframe_size (self);
 
-    int is_bin = 0;
-    uint char_nbr;
+    is_bin = 0;
+
     for (char_nbr = 0; char_nbr < size; char_nbr++)
         if (data [char_nbr] < 9 || data [char_nbr] > 127)
             is_bin = 1;
 
     fprintf (stderr, "[%03d] ", (int) size);
-    size_t max_size = is_bin? 35: 70;
-    char *elipsis = "";
+    max_size = is_bin? 35: 70;
+    elipsis = "";
     if (size > max_size) {
         size = max_size;
         elipsis = "...";
@@ -343,36 +357,45 @@ zframe_reset (zframe_t *self, const void *data, size_t size)
 int
 zframe_test (Bool verbose)
 {
-    printf (" * zframe: ");
     int rc;
+    int frame_nbr;
+	void *output;
+	void *input;
+	char *string;
+	zctx_t *ctx;
+	zframe_t *frame;
+	zframe_t *copy;
+
+	printf (" * zframe: ");
 
     //  @selftest
-    zctx_t *ctx = zctx_new ();
+    ctx = zctx_new ();
     assert (ctx);
 
-    void *output = zsocket_new (ctx, ZMQ_PAIR);
+    output = zsocket_new (ctx, ZMQ_PAIR);
     assert (output);
     zsocket_bind (output, "inproc://zframe.test");
-    void *input = zsocket_new (ctx, ZMQ_PAIR);
+    input = zsocket_new (ctx, ZMQ_PAIR);
     assert (input);
     zsocket_connect (input, "inproc://zframe.test");
 
     //  Send five different frames, test ZFRAME_MORE
-    int frame_nbr;
+
     for (frame_nbr = 0; frame_nbr < 5; frame_nbr++) {
-        zframe_t *frame = zframe_new ("Hello", 5);
+        frame = zframe_new ("Hello", 5);
         rc = zframe_send (&frame, output, ZFRAME_MORE);
         assert (rc == 0);
     }
     //  Send same frame five times, test ZFRAME_REUSE
-    zframe_t *frame = zframe_new ("Hello", 5);
+    frame = zframe_new ("Hello", 5);
     assert (frame);
     for (frame_nbr = 0; frame_nbr < 5; frame_nbr++) {
         rc = zframe_send (&frame, output, ZFRAME_MORE + ZFRAME_REUSE);
         assert (rc == 0);
     }
     assert (frame);
-    zframe_t *copy = zframe_dup (frame);
+
+    copy = zframe_dup (frame);
     assert (zframe_eq (frame, copy));
     zframe_destroy (&frame);
     assert (!zframe_eq (frame, copy));
@@ -384,7 +407,7 @@ zframe_test (Bool verbose)
     frame = zframe_new ("NOT", 3);
     assert (frame);
     zframe_reset (frame, "END", 3);
-    char *string = zframe_strhex (frame);
+    string = zframe_strhex (frame);
     assert (streq (string, "454E44"));
     free (string);
     string = zframe_strdup (frame);

@@ -47,14 +47,18 @@
 char *
 zstr_recv (void *socket)
 {
+	int size;
+	char *string;
+	zmq_msg_t message;
+
     assert (socket);
-    zmq_msg_t message;
+
     zmq_msg_init (&message);
     if (zmq_recvmsg (socket, &message, 0) < 0)
         return NULL;
 
-    int size = zmq_msg_size (&message);
-    char *string = (char *) malloc (size + 1);
+    size = zmq_msg_size (&message);
+    string = (char *) malloc (size + 1);
     memcpy (string, zmq_msg_data (&message), size);
     zmq_msg_close (&message);
     string [size] = 0;
@@ -71,14 +75,18 @@ zstr_recv (void *socket)
 char *
 zstr_recv_nowait (void *socket)
 {
+	int size;
+	char *string;
+	zmq_msg_t message;
+
     assert (socket);
-    zmq_msg_t message;
+    
     zmq_msg_init (&message);
     if (zmq_recvmsg (socket, &message, ZMQ_DONTWAIT) < 0)
         return NULL;
 
-    int size = zmq_msg_size (&message);
-    char *string = (char *) malloc (size + 1);
+    size = zmq_msg_size (&message);
+    string = (char *) malloc (size + 1);
     memcpy (string, zmq_msg_data (&message), size);
     zmq_msg_close (&message);
     string [size] = 0;
@@ -93,13 +101,15 @@ zstr_recv_nowait (void *socket)
 int
 zstr_send (void *socket, const char *string)
 {
+	int rc;
+	zmq_msg_t message;
+
     assert (socket);
     assert (string);
 
-    zmq_msg_t message;
     zmq_msg_init_size (&message, strlen (string));
     memcpy (zmq_msg_data (&message), string, strlen (string));
-    int rc = zmq_sendmsg (socket, &message, 0);
+    rc = zmq_sendmsg (socket, &message, 0);
     zmq_msg_close (&message);
     return rc == -1? -1: 0;
 }
@@ -110,13 +120,15 @@ zstr_send (void *socket, const char *string)
 int
 zstr_sendm (void *socket, const char *string)
 {
+	int rc;
+    zmq_msg_t message;
+
     assert (socket);
     assert (string);
 
-    zmq_msg_t message;
     zmq_msg_init_size (&message, strlen (string));
     memcpy (zmq_msg_data (&message), string, strlen (string));
-    int rc = zmq_sendmsg (socket, &message, ZMQ_SNDMORE);
+    rc = zmq_sendmsg (socket, &message, ZMQ_SNDMORE);
     zmq_msg_close (&message);
     return rc == -1? -1: 0;
 }
@@ -128,14 +140,19 @@ zstr_sendm (void *socket, const char *string)
 int
 zstr_sendf (void *socket, const char *format, ...)
 {
+	int rc;
+    va_list argptr;
+    int size;
+    char *string;
+    int required;
+
     assert (socket);
 
     //  Format string into buffer
-    va_list argptr;
     va_start (argptr, format);
-    int size = 255 + 1;
-    char *string = (char *) malloc (size);
-    int required = vsnprintf (string, size, format, argptr);
+    size = 255 + 1;
+    string = (char *) malloc (size);
+    required = vsnprintf (string, size, format, argptr);
     if (required >= size) {
         size = required + 1;
         string = (char *) realloc (string, size);
@@ -144,7 +161,7 @@ zstr_sendf (void *socket, const char *format, ...)
     va_end (argptr);
 
     //  Now send formatted string
-    int rc = zstr_send (socket, string);
+    rc = zstr_send (socket, string);
     free (string);
     return rc;
 }
@@ -156,21 +173,26 @@ zstr_sendf (void *socket, const char *format, ...)
 int
 zstr_test (Bool verbose)
 {
+    int string_nbr;
+	char *string;
+	void *output;
+	void *input;
+	zctx_t *ctx;
+
     printf (" * zstr: ");
 
     //  @selftest
-    zctx_t *ctx = zctx_new ();
+    ctx = zctx_new ();
     assert (ctx);
 
-    void *output = zsocket_new (ctx, ZMQ_PAIR);
+    output = zsocket_new (ctx, ZMQ_PAIR);
     assert (output);
     zsocket_bind (output, "inproc://zstr.test");
-    void *input = zsocket_new (ctx, ZMQ_PAIR);
+    input = zsocket_new (ctx, ZMQ_PAIR);
     assert (input);
     zsocket_connect (input, "inproc://zstr.test");
 
     //  Send ten strings and then END
-    int string_nbr;
     for (string_nbr = 0; string_nbr < 10; string_nbr++)
         zstr_sendf (output, "this is string %d", string_nbr);
     zstr_send (output, "END");
@@ -178,7 +200,7 @@ zstr_test (Bool verbose)
     //  Read and count until we receive END
     string_nbr = 0;
     for (string_nbr = 0;; string_nbr++) {
-        char *string = zstr_recv (input);
+        string = zstr_recv (input);
         if (streq (string, "END")) {
             free (string);
             break;

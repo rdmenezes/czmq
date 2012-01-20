@@ -106,8 +106,11 @@ s_thread_shim (void *args)
 unsigned __stdcall
 s_thread_shim (void *args)
 {
+	shim_t *shim;
+
     assert (args);
-    shim_t *shim = (shim_t *) args;
+
+    shim = (shim_t *) args;
     if (shim->attached)
         shim->attached (shim->args, shim->ctx, shim->pipe);
     else
@@ -129,6 +132,8 @@ s_thread_start (shim_t *shim)
     pthread_detach (thread);
 
 #elif defined (__WINDOWS__)
+	int priority;
+
     shim->handle = (HANDLE)_beginthreadex(
         NULL,                   //  Handle is private to this process
         0,                      //  Use a default stack size for new thread
@@ -139,7 +144,7 @@ s_thread_start (shim_t *shim)
 
     assert (shim->handle);
     //  Set child thread priority to same as current
-    int priority = GetThreadPriority (GetCurrentThread ());
+    priority = GetThreadPriority (GetCurrentThread ());
     SetThreadPriority (shim->handle, priority);
     //  Now start thread
     ResumeThread (shim->handle);
@@ -217,11 +222,14 @@ zthread_fork (zctx_t *ctx, zthread_attached_fn *thread_fn, void *args)
 static void *
 s_test_detached (void *args)
 {
+	void *push;
+	zctx_t *ctx;
+
     //  Create a socket to check it'll be automatically deleted
-    zctx_t *ctx = zctx_new ();
+    ctx = zctx_new ();
     assert (ctx);
 
-    void *push = zsocket_new (ctx, ZMQ_PUSH);
+    push = zsocket_new (ctx, ZMQ_PUSH);
     assert (push);
     zctx_destroy (&ctx);
     return NULL;
@@ -242,12 +250,16 @@ s_test_attached (void *args, zctx_t *ctx, void *pipe)
 int
 zthread_test (Bool verbose)
 {
+    int rc = 0;
+	char *pong;
+	void *pipe;
+	zctx_t *ctx;
+
     printf (" * zthread: ");
 
     //  @selftest
-    zctx_t *ctx = zctx_new ();
+    ctx = zctx_new ();
     assert (ctx);
-    int rc = 0;
 
     //  Create a detached thread, let it run
     rc = zthread_new (s_test_detached, NULL);
@@ -255,10 +267,10 @@ zthread_test (Bool verbose)
     zclock_sleep (100);
 
     //  Create an attached thread, check it's safely alive
-    void *pipe = zthread_fork (ctx, s_test_attached, NULL);
+    pipe = zthread_fork (ctx, s_test_attached, NULL);
     assert (pipe);
     zstr_send (pipe, "ping");
-    char *pong = zstr_recv (pipe);
+    pong = zstr_recv (pipe);
     assert (streq (pong, "pong"));
     free (pong);
 

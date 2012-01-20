@@ -34,6 +34,11 @@ extern "C" {
 //  Opaque class structure
 typedef struct _zhash zhash_t;
 
+typedef struct {
+        char name [100];
+        Bool exists;
+    } zhash_testset;
+
 //  @interface
 //  Callback function for zhash_foreach method
 typedef int (zhash_foreach_fn) (char *key, void *item, void *argument);

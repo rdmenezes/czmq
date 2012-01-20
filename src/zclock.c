@@ -112,13 +112,13 @@ zclock_time (void)
 void
 zclock_log (const char *format, ...)
 {
+	va_list argptr;
     time_t curtime = time (NULL);
     struct tm *loctime = localtime (&curtime);
     char formatted [20];
     strftime (formatted, 20, "%y-%m-%d %H:%M:%S ", loctime);
     printf ("%s", formatted);
 
-    va_list argptr;
     va_start (argptr, format);
     vprintf (format, argptr);
     va_end (argptr);
@@ -133,10 +133,11 @@ zclock_log (const char *format, ...)
 int
 zclock_test (Bool verbose)
 {
+	int64_t start;
     printf (" * zclock: ");
 
     //  @selftest
-    int64_t start = zclock_time ();
+    start = zclock_time ();
     zclock_sleep (10);
     assert ((zclock_time () - start) >= 10);
     //  @end

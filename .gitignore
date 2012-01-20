@@ -47,3 +47,9 @@ win32/czmq_selftest.exe.embed.manifest
 win32/czmq_selftest.exe.embed.manifest.res
 win32/czmq_selftest.exe.intermediate.manifest
 win32/czmq_selftest.vcproj.WS200902.user.user
+
+/output
+/builds/windows/msvc/czmq.vcxproj.user
+/builds/windows/msvc/czmq_selftest.vcproj
+/builds/windows/msvc/README.txt
+/builds/windows/msvc/czmq.vcxproj.filters
